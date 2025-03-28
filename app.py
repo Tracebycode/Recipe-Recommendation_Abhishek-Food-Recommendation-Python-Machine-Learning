@@ -1,16 +1,24 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, session
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+
 app = Flask(__name__)
+
+app.secret_key = "your_secret_key"  # Secret key for session management
+
+# Dummy credentials
+USER_CREDENTIALS = {"admin": "password123"}
+
+
 
 
 
 # Absolute path example
-data = pd.read_csv("Notebook/recipe_final (1).csv")
+data = pd.read_csv("recipe_final (1).csv")
 
 
 # Preprocess Ingredients
@@ -42,8 +50,25 @@ def truncate(text, length):
         return text[:length] + "..."
     else:
         return text
-
+    
+    
 @app.route('/', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')  
+        password = request.form.get('password')
+
+        if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+            session['user'] = username  # Store user session
+            return redirect(url_for('index'))  
+
+        return "Invalid Credentials. Try Again!", 400
+
+    return render_template('login.html')
+
+
+
+@app.route('/recipe', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         calories = float(request.form['calories'])
@@ -58,6 +83,13 @@ def index():
         recommendations = recommend_recipes(input_features)
         return render_template('index.html', recommendations=recommendations.to_dict(orient='records'),truncate = truncate)
     return render_template('index.html', recommendations=[])
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
